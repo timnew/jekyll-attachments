@@ -3,7 +3,7 @@
 # Jekyll post attachment generator
 # https://github.com/timnew/jekyll-attachments
 #
-# Version: 0.1
+# Version: 0.2
 #
 # Copyright (c) 2013 TimNew, http://timnew.github.io
 # Licensed under the MIT license (http://www.opensource.org/licenses/mit-license.php)
@@ -16,18 +16,17 @@
 module Jekyll
 
   class Attachment < StaticFile
-    def initialize(site, post, name)
-      @site = site
-      @post = post
-      @name = name
+    def initialize(site, doc, name)
+      @doc = doc
+      super(site, @doc.attachment_path, '', name)
     end
 
     def path
-      File.join(@post.attachment_path, @name)
+      File.join(@doc.attachment_path, @name)
     end
 
     def destination(dest)
-      path = File.dirname(@post.destination(dest))
+      path = File.dirname(@doc.destination(dest))
       File.join(path, @name)
     end
   end
@@ -38,13 +37,10 @@ module Jekyll
     end
   end
 
-  class Post
-    attr_reader :name
-
+  class Document
     def attachment_path
       return @attachment_path if @attachment_path
-      extname = File.extname @name
-      basename = File.basename @name, extname
+      basename = File.basename path, extname
       @attachment_path = File.join(@site.attachment_dir, basename)
     end
 
@@ -59,15 +55,15 @@ module Jekyll
     priority :low
 
     def generate(site)
-      site.posts.select{|p| p.attachment_exists? }.each do |p|
+      site.posts.docs.select{|p| p.attachment_exists? }.each do |p|
         Dir.glob(File.join(p.attachment_path, "**", "*"), File::FNM_PATHNAME ) do |file|
           relative_path = file.slice(p.attachment_path.length..-1)
           relative_path.slice!(0) if relative_path[0] == '/'
-          puts "Find attachment: #{p.name} > #{relative_path}"
-          site.static_files << Attachment.new(site, p, relative_path)
+          attachment = Attachment.new(site, p, relative_path)
+          puts "found attachment: #{p.basename} > #{attachment.url}"
+          site.static_files << attachment
         end
       end
     end
   end
 end
-
